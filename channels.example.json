@@ -1,0 +1,17 @@
+{
+    "destination_channel": -100XXXXXXXXXX,
+
+    "channels": {
+        "-100XXXXXXXXXX": "Example Channel Name",
+        "-100YYYYYYYYYY": "Another Channel"
+    },
+
+    "channel_tiers": {
+        "-100XXXXXXXXXX": "high",
+        "-100YYYYYYYYYY": ""
+    },
+
+    "rapid_update_channels": [
+        -100XXXXXXXXXX
+    ]
+}

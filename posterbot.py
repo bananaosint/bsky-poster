@@ -43,7 +43,7 @@ SEMANTIC_THRESHOLD = 0.65  # Tuned to capture paraphrased news
 #   0.40–0.64  →  same story, new info → reply as update
 #   < 0.40  →  different story → new standalone post
 # ==========================================
-POSTED_CACHE: deque = deque(maxlen=30)  # (text, embedding, post_strong_ref, formatted_text)
+POSTED_CACHE: deque = deque(maxlen=15)  # (text, embedding, post_strong_ref, formatted_text)
 UPDATE_THRESHOLD = 0.55  # Raised from 0.40 — domain-specific content needs a tighter match
 
 # ==========================================
@@ -53,7 +53,16 @@ UPDATE_THRESHOLD = 0.55  # Raised from 0.40 — domain-specific content needs a 
 # Telegram Config
 TELEGRAM_API_ID = int(os.getenv('TELEGRAM_API_ID'))
 TELEGRAM_API_HASH = os.getenv('TELEGRAM_API_HASH')
-TARGET_CHANNEL = -1003770951822 
+
+# Load destination channel from channels.json (shared with filterbot)
+_config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "channels.json")
+if not os.path.isfile(_config_path):
+    print("❌ channels.json not found! Run: python \"(TOOL)export_telegram_channels.py\"")
+    sys.exit(1)
+with open(_config_path, "r", encoding="utf-8") as _f:
+    import json as _json
+    _channel_config = _json.load(_f)
+TARGET_CHANNEL = _channel_config["destination_channel"]
 
 # Groq Config
 GROQ_API_KEY = os.getenv('GROQ_API_KEY')

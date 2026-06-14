@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hallucination Engine – 10 Optical Illusions</title>
+  <meta name="description" content="A collection of 10 optical illusions powered by p5.js. Stare at the center and experience reality distortion.">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    /* ── Reset ─────────────────────────────────────────────── */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #050510;
+      color: #fff;
+      min-height: 100vh;
+      overflow-y: auto;
+    }
+
+    body.illusion-active { overflow: hidden; }
+
+    /* ── Animated background ──────────────────────────────── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse at 20% 40%, rgba(120, 40, 200, 0.10) 0%, transparent 55%),
+        radial-gradient(ellipse at 80% 60%, rgba(0, 100, 255, 0.07) 0%, transparent 55%),
+        radial-gradient(ellipse at 50% 100%, rgba(200, 50, 100, 0.06) 0%, transparent 50%);
+      animation: bgPulse 12s ease-in-out infinite alternate;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    @keyframes bgPulse {
+      0%   { opacity: 0.6; transform: scale(1); }
+      100% { opacity: 1;   transform: scale(1.15); }
+    }
+
+    /* ── Menu ─────────────────────────────────────────────── */
+    #menu {
+      position: relative;
+      z-index: 2;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 55px 30px 30px;
+      transition: opacity 0.45s ease, transform 0.45s ease;
+    }
+
+    #menu.hidden {
+      opacity: 0;
+      transform: translateY(-18px);
+      pointer-events: none;
+      visibility: hidden;
+      transition: opacity 0.4s ease, transform 0.4s ease, visibility 0s 0.4s;
+    }
+
+    /* ── Title ─────────────────────────────────────────────── */
+    .title { text-align: center; margin-bottom: 6px; }
+
+    .title h1 {
+      font-size: clamp(32px, 5vw, 52px);
+      font-weight: 900;
+      letter-spacing: -1.5px;
+      background: linear-gradient(135deg, #fff 0%, #a78bfa 45%, #818cf8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: rgba(255,255,255,0.35);
+      font-size: 13px;
+      font-weight: 400;
+      margin-bottom: 48px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+    }
+
+    /* ── Card grid ─────────────────────────────────────────── */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 18px;
+    }
+
+    .card {
+      position: relative;
+      background: rgba(255,255,255,0.025);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 16px;
+      padding: 26px 24px 22px;
+      cursor: pointer;
+      overflow: hidden;
+      transition: transform 0.35s cubic-bezier(.4,0,.2,1),
+                  border-color 0.35s,
+                  box-shadow 0.35s;
+      opacity: 0;
+      transform: translateY(22px);
+      animation: cardIn 0.5s ease forwards;
+      animation-delay: calc(var(--i, 0) * 0.06s);
+    }
+
+    @keyframes cardIn {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Top accent bar */
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: var(--accent);
+      opacity: 0.6;
+      transition: opacity 0.3s, height 0.3s;
+    }
+
+    /* Mouse-follow glow */
+    .card::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(
+        circle at var(--mx, 50%) var(--my, 50%),
+        var(--glow) 0%, transparent 65%
+      );
+      opacity: 0;
+      transition: opacity 0.35s;
+      border-radius: 16px;
+      pointer-events: none;
+    }
+
+    .card:hover {
+      transform: translateY(-5px) scale(1.02);
+      border-color: rgba(255,255,255,0.12);
+      box-shadow: 0 22px 55px rgba(0,0,0,0.5), 0 0 40px var(--glow);
+    }
+    .card:hover::before { opacity: 1; height: 4px; }
+    .card:hover::after  { opacity: 1; }
+    .card:active        { transform: translateY(-1px) scale(0.98); }
+
+    .card-number {
+      position: absolute;
+      top: 12px; right: 14px;
+      font-size: 11px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.12);
+      transition: color 0.3s;
+    }
+    .card:hover .card-number { color: rgba(255,255,255,0.35); }
+
+    .card-icon {
+      font-size: 34px;
+      margin-bottom: 12px;
+      filter: drop-shadow(0 0 10px var(--glow));
+    }
+
+    .card-title {
+      font-size: 17px;
+      font-weight: 700;
+      margin-bottom: 7px;
+    }
+
+    .card-desc {
+      font-size: 12.5px;
+      color: rgba(255,255,255,0.32);
+      line-height: 1.55;
+      font-weight: 300;
+    }
+
+    /* ── Canvas container ─────────────────────────────────── */
+    #canvas-container {
+      position: fixed;
+      inset: 0;
+      z-index: 10;
+      display: none;
+      opacity: 0;
+      transition: opacity 0.55s ease;
+    }
+
+    #canvas-container.visible {
+      display: block;
+      opacity: 1;
+    }
+
+    #canvas-container canvas { display: block; }
+
+    /* Vignette overlay */
+    #canvas-container::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle, transparent 45%, rgba(0,0,0,0.45) 100%);
+      pointer-events: none;
+    }
+
+    /* ── Back button ──────────────────────────────────────── */
+    #back-btn {
+      position: fixed;
+      top: 18px; left: 18px;
+      z-index: 25;
+      background: rgba(0,0,0,0.45);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 50px;
+      padding: 9px 20px;
+      color: rgba(255,255,255,0.65);
+      font-family: 'Inter', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      display: none;
+      align-items: center;
+      gap: 6px;
+      opacity: 0;
+      transform: translateX(-10px);
+      transition: all 0.35s ease;
+    }
+
+    #back-btn.visible {
+      display: flex;
+      opacity: 1;
+      transform: translateX(0);
+    }
+
+    #back-btn:hover {
+      background: rgba(255,255,255,0.12);
+      color: #fff;
+    }
+
+    /* ── Illusion name ────────────────────────────────────── */
+    #illusion-name {
+      position: fixed;
+      top: 18px;
+      left: 50%; transform: translateX(-50%);
+      z-index: 25;
+      color: rgba(255,255,255,0.75);
+      font-family: 'Inter', sans-serif;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 2.5px;
+      text-transform: uppercase;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+      background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      padding: 8px 20px;
+      border-radius: 50px;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    #illusion-name.visible { opacity: 1; }
+
+    /* ── Instructions ─────────────────────────────────────── */
+    #instructions {
+      position: fixed;
+      bottom: 24px;
+      left: 50%; transform: translateX(-50%);
+      z-index: 25;
+      color: rgba(255,255,255,0.85);
+      font-family: 'Inter', sans-serif;
+      font-size: 13px;
+      text-align: center;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+      line-height: 1.6;
+      max-width: 480px;
+      background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      padding: 12px 24px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    #instructions.visible { opacity: 1; }
+    #instructions.fade    { opacity: 0; transition: opacity 3.5s ease; }
+
+    /* ── Footer ───────────────────────────────────────────── */
+    .footer {
+      text-align: center;
+      padding: 38px 0 28px;
+      color: rgba(255,255,255,0.13);
+      font-size: 11px;
+      letter-spacing: 0.5px;
+    }
+
+    /* ── Responsive ───────────────────────────────────────── */
+    @media (max-width: 768px) {
+      #menu { padding: 30px 14px 20px; }
+      .title h1 { font-size: 28px; }
+      .subtitle { font-size: 11px; margin-bottom: 30px; }
+      .grid { grid-template-columns: 1fr 1fr; gap: 12px; }
+      .card { padding: 18px 16px 16px; }
+      .card-icon { font-size: 26px; }
+      .card-title { font-size: 14px; }
+      .card-desc { font-size: 11px; }
+    }
+
+    @media (max-width: 480px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+</head>
+<body>
+
+  <!-- ═══ MENU ═══════════════════════════════════════════════ -->
+  <div id="menu">
+    <div class="title"><h1>Hallucination Engine</h1></div>
+    <p class="subtitle">Choose your reality distortion</p>
+
+    <div class="grid">
+
+      <div class="card" onclick="selectIllusion('spiral')" style="--i:0; --accent:linear-gradient(90deg,#ff006e,#ff6b6b); --glow:rgba(255,0,110,0.12);">
+        <span class="card-number">1</span>
+        <div class="card-icon">🌀</div>
+        <div class="card-title">Spiral Vortex</div>
+        <div class="card-desc">Rotating logarithmic spiral triggers the waterfall illusion — surfaces breathe when you look away</div>
+      </div>
+
+      <div class="card" onclick="selectIllusion('rings')" style="--i:1; --accent:linear-gradient(90deg,#00d2ff,#3a7bd5); --glow:rgba(0,210,255,0.12);">
+        <span class="card-number">2</span>
+        <div class="card-icon">💫</div>
+        <div class="card-title">Pulsing Rings</div>
+        <div class="card-desc">Concentric rings expanding outward create a powerful radial motion aftereffect</div>
+      </div>
+
+      <div class="card" onclick="selectIllusion('snakes')" style="--i:2; --accent:linear-gradient(90deg,#11998e,#38ef7d); --glow:rgba(56,239,125,0.12);">
+        <span class="card-number">3</span>
+        <div class="card-icon">🐍</div>
+        <div class="card-title">Rotating Snakes</div>
+        <div class="card-desc">Asymmetric luminance sequences trick your brain into perceiving rotation that doesn't exist</div>
+      </div>
+
+      <div class="card" onclick="selectIllusion('phantom')" style="--i:3; --accent:linear-gradient(90deg,#bdc3c7,#636e72); --glow:rgba(189,195,199,0.10);">
+        <span class="card-number">4</span>
+        <div class="card-icon">👻</div>
+        <div class="card-title">Phantom Grid</div>
+        <div class="card-desc">Ghost dots appear at intersections where none exist — your brain fills in what it expects</div>
+      </div>
+
+      <div class="card" onclick="selectIllusion('moire')" style="--i:4; --accent:linear-gradient(90deg,#a18cd1,#fbc2eb); --glow:rgba(161,140,209,0.12);">
+        <span class="card-number">5</span>
+        <div class="card-icon">〰️</div>
+        <div class="card-title">Moiré Interference</div>
+        <div class="card-desc">Overlapping circle patterns create rippling waves of impossible motion</div>
+      </div>
+
+      <div class="card" onclick="selectIllusion('tunnel')" style="--i:5; --accent:linear-gradient(90deg,#4834d4,#686de0); --glow:rgba(72,52,212,0.12);">
+        <span class="card-number">6</span>
+        <div class="card-icon">🕳️</div>
+        <div class="card-title">Infinite Tunnel</div>
+        <div class="card-desc">Endless zooming depth creates vertigo and a sensation of falling forward</div>
+      </div>
+
+      <div class="card" onclick="selectIllusion('colorburn')" style="--i:6; --accent:linear-gradient(90deg,#f12711,#f5af19); --glow:rgba(241,39,17,0.12);">
+        <span class="card-number">7</span>
+        <div class="card-icon">🎨</div>
+        <div class="card-title">Color Burn</div>
+        <div class="card-desc">Intense saturated colors fatigue your cone cells — vivid afterimages haunt your vision</div>
+      </div>
+
+      <div class="card" onclick="selectIllusion('scintillate')" style="--i:7; --accent:linear-gradient(90deg,#f9d423,#ff4e50); --glow:rgba(249,212,35,0.12);">
+        <span class="card-number">8</span>
+        <div class="card-icon">✨</div>
+        <div class="card-title">Scintillating Grid</div>
+        <div class="card-desc">White dots at intersections flicker dark in your peripheral vision — nothing stays stable</div>
+      </div>
+
+      <div class="card" onclick="selectIllusion('liquid')" style="--i:8; --accent:linear-gradient(90deg,#667db6,#0082c8); --glow:rgba(102,125,182,0.12);">
+        <span class="card-number">9</span>
+        <div class="card-icon">🌊</div>
+        <div class="card-title">Liquid Surface</div>
+        <div class="card-desc">A rippling grid of dots creates the illusion of a breathing, flowing surface</div>
+      </div>
+
+      <div class="card" onclick="selectIllusion('kaleidoscope')" style="--i:9; --accent:linear-gradient(90deg,#c471f5,#fa71cd); --glow:rgba(196,113,245,0.12);">
+        <span class="card-number">0</span>
+        <div class="card-icon">🔮</div>
+        <div class="card-title">Kaleidoscope Melt</div>
+        <div class="card-desc">Mirrored fractal symmetry with color cycling dissolves the edges of your perception</div>
+      </div>
+
+    </div>
+
+    <p class="footer">⚠️ May cause visual disturbances · Not recommended for photosensitive conditions · Press 1–9, 0 to select · ESC to exit</p>
+  </div>
+
+  <!-- ═══ CANVAS ═════════════════════════════════════════════ -->
+  <div id="canvas-container"></div>
+
+  <!-- ═══ OVERLAYS ═══════════════════════════════════════════ -->
+  <button id="back-btn" onclick="goBack()">← Back</button>
+  <div id="illusion-name"></div>
+  <div id="instructions"></div>
+
+  <script src="hallucinate.js"></script>
+
+  <!-- Mouse-follow glow on cards -->
+  <script>
+    document.querySelectorAll('.card').forEach(card => {
+      card.addEventListener('mousemove', e => {
+        const r = card.getBoundingClientRect();
+        card.style.setProperty('--mx', ((e.clientX - r.left) / r.width * 100) + '%');
+        card.style.setProperty('--my', ((e.clientY - r.top) / r.height * 100) + '%');
+      });
+    });
+  </script>
+</body>
+</html>

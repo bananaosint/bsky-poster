@@ -52,131 +52,34 @@ SEMANTIC_THRESHOLD = 0.65  # Tuned to capture paraphrased duplicates
 
 # ==========================================
 # [TAG: CONFIGURATION]
-# Replace these placeholder values with your actual data.
+# Loads channel config from channels.json.
+# Run (TOOL)export_telegram_channels.py to generate this file.
 # ==========================================
 TELEGRAM_API_ID = int(os.getenv('TELEGRAM_API_ID'))
 TELEGRAM_API_HASH = os.getenv('TELEGRAM_API_HASH')
 SESSION_NAME = 'my_local_aggregator' # String: Name for the local sqlite session file
 
-# List of source channel IDs (integers) or usernames (strings like '@source_channel')
-CHANNEL_NAMES = {
-    -1002528747046: "Alsaa Plus EN",
-    -1001361890342: "Amir Tsarfati",
-    -1003727212443: "Ayatollah Mojtaba Khamenei",
-    -1003745862761: "BananaOSINT",
-    -1002006131201: "BRICS News",
-    -1001676275372: "DD Geopolitics",
-    -1001462338131: "Donald J. Trump",
-    -1002216390894: "Eye On Palestine",
-    -1001971363005: "Fotros Resistance",
-    -1001860107178: "Geopolitics Prime",
-    -1002117353956: "Geopolitics Watch",
-    -1003810821788: "ILRedAlertNews",
-    -1001452037375: "Insider Paper",
-    -1002206992065: "Insider Wire",
-    -1001310984791: "Intel Slava",
-    -1001341028511: "Israel Defense Forces",
-    -1002490556455: "Just News",
-    -1001177134182: "Mannie's War Room",
-    -1003770951822: "MIDDLE EAST NEWS",
-    -1001626824086: "Middle East Spectator — MES",
-    -1003806424922: "NAYA - نايا EN 🇺🇸",
-    -1001410429120: "OSINT",
-    -1001189544175: "Quds News Network",
-    -1001009801555: "Quran | القرآن الكريم",
-    -1003724196287: "Raw feed",
-    -1001810182217: "Rerum Novarum // Intel, Breaking News, and Alerts 🇺🇸",
-    -1003711671472: "Resistance News Network Mirror",
-    -1002799200895: "Tasnim News En",
-    -1001520639179: "The Cradle",
-    -1001976111514: "Walter Bloomberg",
-    -1002027086589: "WarfareAnalysis News",
-    -1002117167313: "WarFront Witness",
-    -1001406113886: "Channel 100 News israel",
-    -1001008544682: "Ansar Allah Media Center",
-    -1002093017846: "South Lebanon",
-    -1002867457885: "South Lebanon - South Website",
-    -1001006939659: "Fars News Agency IR",
-    -1001419622843: "Unknown Soldiers",
-    -1001491094605: "Sabereen News",
-    -1001006840823: "Al Jazeera Channel",
-    -1001003979111: "Yemen Net Channel",
-    -1001056597437: "IRGC News Channel 🏴",
-    -1001469021333: "✙DeepState✙🇺🇦",
-    -1003347363058: "🇮🇱 Unit 8200 israel Reports 🇮🇱",
-    -1003179534264: "🚨 RNN Alerts",
-    -1003167552405: "🚫 Israel News Without Censorship 🚫",
-}
+# ── Load channel config from JSON ────────────────────────────
+_config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "channels.json")
+if not os.path.isfile(_config_path):
+    logger.error(
+        "channels.json not found! Run the export tool first:\n"
+        "  python \"(TOOL)export_telegram_channels.py\"\n"
+        "Or copy channels.example.json to channels.json and fill it in."
+    )
+    sys.exit(1)
 
-# ==========================================
-# [TAG: SOURCE CREDIBILITY TIERS]
-# Affects how the LLM weighs incoming messages.
-# Values: "high", "medium", "low", or "" (unknown — defaults to medium).
-# Fill in tiers based on your trust in each source.
-# ==========================================
-CHANNEL_TIERS = {
-    -1002528747046: "",  # Alsaa Plus EN
-    -1001361890342: "high",  # Amir Tsarfati
-    -1003727212443: "high",  # Ayatollah Mojtaba Khamenei
-    -1003745862761: "high",  # BananaOSINT
-    -1002006131201: "high",  # BRICS News
-    -1001676275372: "",  # DD Geopolitics
-    -1001462338131: "high",  # Donald J. Trump
-    -1002216390894: "",  # Eye On Palestine
-    -1001971363005: "",  # Fotros Resistance
-    -1001860107178: "",  # Geopolitics Prime
-    -1002117353956: "",  # Geopolitics Watch
-    -1003810821788: "high",  # ILRedAlertNews
-    -1001452037375: "",  # Insider Paper
-    -1002206992065: "high",  # Insider Wire
-    -1001310984791: "high",  # Intel Slava
-    -1001341028511: "high",  # Israel Defense Forces
-    -1002490556455: "",  # Just News
-    -1001177134182: "",  # Mannie's War Room
-    -1003770951822: "",  # MIDDLE EAST NEWS
-    -1001626824086: "",  # Middle East Spectator — MES
-    -1003806424922: "",  # NAYA - نايا EN 🇺🇸
-    -1001410429120: "",  # OSINT
-    -1001189544175: "low",  # Quds News Network
-    -1001009801555: "",  # Quran | القرآن الكريم
-    -1003724196287: "high",  # Raw feed
-    -1001810182217: "",  # Rerum Novarum // Intel, Breaking News, and Alerts 🇺🇸
-    -1003711671472: "low",  # Resistance News Network Mirror
-    -1002799200895: "low",  # Tasnim News En
-    -1001520639179: "",  # The Cradle
-    -1001976111514: "",  # Walter Bloomberg
-    -1002027086589: "low",  # WarfareAnalysis News
-    -1002117167313: "",  # WarFront Witness
-    -1001406113886: "",  # Channel 100 News israel
-    -1001008544682: "",  # Ansar Allah Media Center
-    -1002093017846: "",  # South Lebanon
-    -1002867457885: "",  # South Lebanon - South Website
-    -1001006939659: "",  # Fars News Agency IR
-    -1001419622843: "",  # Unknown Soldiers
-    -1001491094605: "",  # Sabereen News
-    -1001006840823: "high",  # Al Jazeera Channel
-    -1001003979111: "",  # Yemen Net Channel
-    -1001056597437: "low",  # IRGC News Channel 🏴
-    -1001469021333: "",  # ✙DeepState✙🇺🇦
-    -1003347363058: "low",  # 🇮🇱 Unit 8200 israel Reports 🇮🇱
-    -1003179534264: "",  # 🚨 RNN Alerts
-    -1003167552405: "low",  # 🚫 Israel News Without Censorship 🚫
-}
+with open(_config_path, "r", encoding="utf-8") as _f:
+    _channel_config = json.load(_f)
 
-# ==========================================
-# [TAG: RAPID UPDATE CHANNELS]
-# Channels that post fast micro-updates (e.g., alert sirens, rapid
-# strike reports). These get a LOWER semantic threshold (0.55) so
-# legitimate rapid-fire updates aren't caught as duplicates.
-# ==========================================
-RAPID_UPDATE_CHANNELS = {
-    -1003810821788,  # ILRedAlertNews
-    -1003179534264,  # 🚨 RNN Alerts
-    # Add other channels that post rapid micro-updates
-}
+# Convert string keys back to integers for Telethon compatibility
+CHANNEL_NAMES = {int(k): v for k, v in _channel_config["channels"].items()}
+CHANNEL_TIERS = {int(k): v for k, v in _channel_config.get("channel_tiers", {}).items()}
+RAPID_UPDATE_CHANNELS = set(_channel_config.get("rapid_update_channels", []))
+DESTINATION_CHANNEL = _channel_config["destination_channel"]
 
-# The destination chat ID or username where important messages go
-DESTINATION_CHANNEL = -1003770951822
+logger.info(f"Loaded {len(CHANNEL_NAMES)} channels from channels.json")
+logger.info(f"Destination channel: {DESTINATION_CHANNEL}")
 
 # Groq Config
 GROQ_API_KEY = os.getenv('GROQ_API_KEY')
