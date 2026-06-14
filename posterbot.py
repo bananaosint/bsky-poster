@@ -408,7 +408,7 @@ async def batch_worker():
                     sent_post = await blsky_client.send_video(
                         text=final_post,
                         video=video_bytes,
-                        video_alt="OSINT video attachment"
+                        video_alt="video attachment"
                     )
                     stats["messages_posted"] += 1
                     print("🚀 Posted text + video to Bluesky!")
@@ -417,7 +417,7 @@ async def batch_worker():
                         upload = await blsky_client.upload_blob(img_bytes)
                         embed = models.AppBskyEmbedImages.Main(
                             images=[models.AppBskyEmbedImages.Image(
-                                alt="OSINT media attachment",
+                                alt="media attachment",
                                 image=upload.blob,
                             )]
                         )
@@ -428,7 +428,7 @@ async def batch_worker():
                         sent_post = await blsky_client.send_image(
                             text=final_post,
                             image=img_bytes,
-                            image_alt="OSINT media attachment"
+                            image_alt="media attachment"
                         )
                     stats["messages_posted"] += 1
                     print("🚀 Posted text + image to Bluesky!")

@@ -1,0 +1,32 @@
+{
+    "override_keywords": {
+        "_comment": "Tier 0: If ANY of these appear, pass IMMEDIATELY. These are your highest-confidence signals. Keep this short.",
+        "keywords": [
+            "breaking:", "flash:", "urgent:",
+            "example keyword 1",
+            "example keyword 2"
+        ]
+    },
+
+    "instant_reject_keywords": {
+        "_comment": "Tier 1: If ANY of these appear (and no override matched), drop immediately. Use this for spam, ads, and noise.",
+        "keywords": [
+            "donate", "subscribe", "buy now", "click here",
+            "follow us", "join our channel",
+            "example spam phrase"
+        ]
+    },
+
+    "must_match_keywords": {
+        "_comment": "Tier 2: Message must contain at least one of these to proceed to the LLM. This is your main topic filter — add keywords for whatever you're monitoring.",
+        "keywords": [
+            "example topic keyword",
+            "another topic keyword"
+        ]
+    },
+
+    "llm_prompt": {
+        "_comment": "The system prompt sent to the LLM. Customize this to define what 'important' means for YOUR use case. The LLM must return JSON with 'important' (bool), 'urgency' (1-3), and 'reason' (string).",
+        "system_prompt": "You are a strict intelligence filter. Evaluate the following message and decide if it is important enough to forward.\n\n**CRITERIA FOR 'IMPORTANT: TRUE':**\n* Breaking news or significant events related to your topic\n* Hard data, statistics, or verified reports\n\n**CRITERIA FOR 'IMPORTANT: FALSE':**\n* Opinions, commentary, or emotional reactions\n* Spam, ads, or engagement bait\n* Old news or speculation\n\n**URGENCY LEVELS:**\n* 3 — FLASH: Immediate, critical events\n* 2 — NOTABLE: Significant developments\n* 1 — ROUTINE: General updates\n\nReturn a JSON object with 'important' (boolean), 'urgency' (integer 1-3), and 'reason' (string). Output ONLY the JSON object, no other text."
+    }
+}

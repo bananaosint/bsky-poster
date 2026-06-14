@@ -1,6 +1,7 @@
-# Secrets
+# Secrets / user config
 private.env
 channels.json
+filters.json
 
 # Telegram session files
 *.session

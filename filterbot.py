@@ -105,172 +105,33 @@ stats = {
 last_digest_stats = dict(stats)
 
 # ==========================================
-# [TAG: KEYWORD PRE-FILTER CONFIG]
-# Three-tier filter that runs BEFORE translation and Groq.
-# Cost: ~0ms. Eliminates the majority of junk without touching the AI.
-#
-# Tier 0 — OVERRIDE:      If ANY of these appear, pass IMMEDIATELY.
-#                          Reject list is never checked. These are
-#                          high-confidence breaking-news signals that
-#                          must never be blocked by a noise word.
-#
-# Tier 1 — INSTANT REJECT: If ANY of these appear (and no override
-#                          matched), drop immediately.
-#
-# Tier 2 — MUST MATCH:    Message must contain at least one of these
-#                          to proceed to Groq. Everything else drops.
-#
-# Keywords are lowercased and matched as substrings.
+# [TAG: KEYWORD & LLM FILTER CONFIG]
+# Loads keyword lists and LLM prompt from filters.json.
+# Copy filters.example.json to filters.json and customize
+# the keywords and prompt for your use case.
 # ==========================================
+_filters_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "filters.json")
+if not os.path.isfile(_filters_path):
+    logger.error(
+        "filters.json not found! "
+        "Copy filters.example.json to filters.json and customize it."
+    )
+    sys.exit(1)
 
-OVERRIDE_KEYWORDS = {
-    # These are unambiguous hard-news signals. A message containing
-    # any of these passes regardless of what else it contains.
-    # Keep this list SHORT and HIGH-CONFIDENCE only.
+with open(_filters_path, "r", encoding="utf-8") as _f:
+    _filters_config = json.load(_f)
 
-    # Strongest kinetic signals
-    "airstrike", "air strike", "air raid",
-    "missile strike", "rocket attack", "drone strike",
-    "ballistic missile", "cruise missile", "hypersonic",
-    "shelling", "artillery fire", "mortar attack",
-    "car bomb", "suicide bomb", "ied",
-    "bombing", "bombardment",
+OVERRIDE_KEYWORDS = set(_filters_config["override_keywords"]["keywords"])
+INSTANT_REJECT_KEYWORDS = set(_filters_config["instant_reject_keywords"]["keywords"])
+MUST_MATCH_KEYWORDS = set(_filters_config["must_match_keywords"]["keywords"])
+LLM_SYSTEM_PROMPT = _filters_config["llm_prompt"]["system_prompt"]
 
-    # Confirmed casualties / destruction
-    "confirmed killed", "confirmed dead", "mass casualty",
-    "civilian casualties", "civilian deaths",
+logger.info(
+    f"Loaded filters: {len(OVERRIDE_KEYWORDS)} override, "
+    f"{len(INSTANT_REJECT_KEYWORDS)} reject, "
+    f"{len(MUST_MATCH_KEYWORDS)} must-match keywords"
+)
 
-    # Unambiguous hard events
-    "coup", "coup attempt", "assassinated", "assassination attempt",
-    "martial law", "state of emergency",
-    "nuclear", "chemical weapon", "nerve agent", "bioweapon",
-    "terrorist attack", "terror attack",
-    "declared war", "war declared", "invasion", "explosion",
-    "killed", "dead", "mourning", "fire",
-
-    # OSINT / breaking markers
-    "osint", "breaking:", "flash:", "urgent:", "⚠️",
-    "intercepted", "satellite imagery", "footage shows",
-}
-
-INSTANT_REJECT_KEYWORDS = {
-    # Fundraising / commerce
-    "donate", "donation", "fundrais", "gofundme", "paypal", "crypto wallet",
-    "buy now", "discount", "sale", "promo code", "subscribe", "shop now",
-    "limited offer", "click here", "link in bio", "merch",
-
-    # Engagement bait / channel promotion
-    "follow us", "join our channel", "join our group", "share this",
-    "repost", "check out our", "our telegram", "subscribe to",
-    "turn on notifications", "support us", "become a member",
-
-    # Pure opinion / analysis framing with no event
-    "i think", "in my opinion", "imo ", "tbh ", "ngl ", "let's be honest",
-    "the truth is", "people need to understand", "thread:",
-    "unpopular opinion", "hot take", "change my mind",
-
-    # Historical / educational non-breaking content
-    "on this day in", "years ago today", "history of", "did you know",
-    "fun fact", "reminder that", "as a reminder",
-
-    # Predictions / speculation with no event
-    "i predict", "will probably", "might happen", "could happen",
-    "what if", "imagine if", "hypothetically",
-
-    # Soft commentary (no event)
-    "explains why", "is proof that", "this is why", "the reason why",
-    "a lesson in", "what this means for", "the implications of",
-    "analysis:", "opinion:", "perspective:",
-
-    # Prayer / condolences
-    "pray for", "prayers for", "god bless", "allah bless", "amen",
-    "rest in peace", "rip ", "condolences",
-
-    # Spam patterns
-    "limited time", "act now", "forward this",
-}
-
-MUST_MATCH_KEYWORDS = {
-    # ── Kinetic military action ────────────────────────────────
-    "air raid", "airspace", "rocket fire", "rocket barrage",
-    "shell", "howitzer", "explosion", "blast", "detonation", "blew up",
-    "kamikaze drone", "shahed", "uav",
-    "gunfire", "firefight", "sniper fire", "ambush",
-    "sortie",
-
-    # ── Territorial / troop movement ──────────────────────────
-    "captured", "liberated", "seized", "fell to", "taken by",
-    "occupied", "stormed", "overrun", "surrounded", "encircled",
-    "breakthrough", "pushed back", "retreated",
-    "crossed into", "incursion",
-    "frontline", "front line", "line of contact",
-    "counter-offensive", "operation launched",
-    "ground operation", "ground offensive", "troops deployed",
-    "troops entered", "special operation",
-
-    # ── Casualties / damage ────────────────────────────────────
-    "killed", "dead", "fatalities", "casualties", "deaths",
-    "wounded", "injured", "missing", "presumed dead",
-    "destroyed", "demolished", "leveled", "flattened",
-    "struck", "hit by", "targeted", "eliminated", "protesters", "protest",
-    "attacked", "killed in action", "kia", "killed by"
-
-    # ── High-value events ─────────────────────────────────────
-    "shot dead", "executed",
-    "overthrown", "seized power",
-    "arrested", "detained", "captured alive", "surrendered",
-    "indicted", "sanctioned", "designated terrorist",
-
-    # ── Weapons / WMD ─────────────────────────────────────────
-    "radiological", "dirty bomb", "enrichment",
-    "sarin", "chlorine gas", "biological weapon",
-    "weaponized", "icbm", "warhead", "fatah", "rocket launched",
-    "aircraft shot down", "missile launched", "missile fired",
-    "drones launched", "drones fired", "drones shot down", "shahed",
-    "attempted", "failed",
-
-    # ── Cyber / infrastructure attacks ────────────────────────
-    "cyberattack", "cyber attack", "hacked", "ransomware",
-    "data breach", "infrastructure attack", "grid attack",
-    "ddos", "malware deployed", "systems compromised",
-    "blackout", "power outage", "water supply",
-    "pipeline attack", "pipeline explosion", "pipeline shut",
-
-    # ── Terrorism / mass violence ──────────────────────────────
-    "mass shooting", "hostage", "hostages taken", "kidnapped",
-    "beheaded", "execution video", "claimed responsibility",
-    "isis", "al-qaeda", "hamas", "hezbollah", "wagner",
-    "iof", "idf", "idf forces", "idf soldier", "israeli forces",
-    "hamas military wing", "russian forces", "russian army", "ukrainian army",
-    "jews", "muslims", "kurds", "kurdistan",
-
-    # ── Major geopolitical events ─────────────────────────────
-    "ceasefire", "ceasefire violated", "ceasefire collapsed",
-    "peace deal", "peace talks collapsed", "negotiations broke",
-    "sanctions imposed", "sanctions package", "embargo",
-    "expulsion", "expelled ambassador", "diplomatic crisis",
-    "nato article 5", "nato activated", "un security council",
-    "emergency session", "resolution passed", "veto",
-
-    # ── Economic shocks ───────────────────────────────────────
-    "market crash", "stock crash", "currency collapsed",
-    "sovereign default", "debt crisis",
-    "bank run", "bank collapse", "financial crisis",
-    "oil embargo", "energy crisis",
-    "hyperinflation", "economic collapse",
-
-    # ── Disasters / mass incidents ────────────────────────────
-    "earthquake", "magnitude", "tsunami", "volcanic eruption",
-    "catastrophic flood", "catastrophic fire", "wildfire",
-    "plane crash", "train crash", "ship sunk",
-    "mass evacuation", "displaced", "refugee crisis",
-    "famine", "outbreak", "epidemic", "pandemic declared",
-
-    # ── Intelligence / OSINT signals ──────────────────────────
-    "intercepted", "leaked", "declassified",
-    "exclusive:", "confirmed by",
-    "video evidence",
-}
 
 # ==========================================
 # [TAG: DATA STRUCTURES]
@@ -353,46 +214,14 @@ def translate_text(text: str) -> str:
 # ==========================================
 # [TAG: LLM FILTERING ENGINE]
 # Sends the translated text to Groq (Llama 3.1 8B).
-# Asks it to evaluate the text against your specific criteria.
-# Now includes urgency scoring and source credibility context.
+# Uses the system prompt loaded from filters.json.
 # ==========================================
 async def evaluate_message(text: str, source_tier: str = "medium") -> FilterDecision | None:
-    # Customize this prompt to define what "important" means to you.
-    system_prompt = (
-    
-"You are a ruthless, high-signal intelligence filter. Your single purpose is to evaluate Telegram messages "
-        "and output a strict decision: is this message critical to forward, or is it noise?\n\n"
-        
-"**🚨 ABSOLUTE OVERRIDE RULE 🚨**\n"
-        "If a message reports kinetic military action (e.g., airstrikes, bombings, drone strikes, gunfire, troop movements), Or alerts for kinetic military action." 
-        "Or if a message includes the word OSINT in it "
-        "it is ALWAYS IMPORTANT: TRUE with URGENCY: 3. Do NOT classify it as subjective noise, even if it is written poorly, contains slang, or includes emotional reactions.\n\n"
-
-        "**CRITERIA FOR 'IMPORTANT: TRUE' (Approve if it meets ANY of these):**\n"
-        "* **Flash Alerts:** Short, unpolished, breaking reports of kinetic military action, strikes, or major accidents.\n"
-        "* **Hard Data:** Contains empirical data, statistics, or deep technical/cyber security analysis.\n"
-        "* **Major Breaking Events:** a significant geopolitical, economic, or global security event.\n\n"
-        
-        "**CRITERIA FOR 'IMPORTANT: FALSE' (Reject if it meets ANY of these):**\n"
-        "* **Noise:** rants, emotional venting, or commentary.\n"
-        "* **Engagement Junk:** Memes, jokes, engagement bait, or conversational filler.\n"
-        "* **Propaganda:** Blatant state-sponsored PR, obvious bias, or unsourced hype.\n\n"
-
-        "**URGENCY LEVELS (set 'urgency' field):**\n"
-        "* **3 — FLASH:** Active kinetic events, mass casualty incidents, breaking military strikes, confirmed assassinations.\n"
-        "* **2 — NOTABLE:** Significant geopolitical developments, sanctions, diplomatic events, major arrests.\n"
-        "* **1 — ROUTINE:** General newsworthy updates that pass the importance filter but are not time-critical.\n\n"
-
-        "Return a JSON object with 'important' (boolean), 'urgency' (integer 1-3), and 'reason' (string). "
-        "Output ONLY the JSON object, no other text."
-    )
-    
     try:
-        # Using AsyncGroq ensures the Telegram bot keeps listening while the LLM "thinks"
         response = await groq_client.chat.completions.create(
             model=GROQ_MODEL,
             messages=[
-                {'role': 'system', 'content': system_prompt},
+                {'role': 'system', 'content': LLM_SYSTEM_PROMPT},
                 {'role': 'user', 'content': f"Source credibility tier: {source_tier}\nMessage payload: {text}"}
             ],
             response_format={"type": "json_object"},
@@ -400,8 +229,6 @@ async def evaluate_message(text: str, source_tier: str = "medium") -> FilterDeci
             max_completion_tokens=256,
             stream=False,
         )
-        
-        # Parse the JSON string returned by Groq back into our Pydantic object
         raw_json_string = response.choices[0].message.content
         decision = FilterDecision.model_validate_json(raw_json_string)
         return decision
@@ -412,6 +239,7 @@ async def evaluate_message(text: str, source_tier: str = "medium") -> FilterDeci
     except Exception as e:
         logger.error(f"Groq API error: {e}")
         return None
+
 
 # ==========================================
 # [TAG: GROQ RETRY WRAPPER]

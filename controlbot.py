@@ -2,7 +2,7 @@
 controlbot.py — Telegram Bot Controller
 ========================================
 Supervisor that manages filterbot.py and posterbot.py as child processes.
-Controlled from your iPhone via Telegram bot commands.
+Controlled from your phone via Telegram bot commands.
 
 Usage:
     python controlbot.py
