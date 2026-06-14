@@ -78,8 +78,8 @@ pip install telethon python-telegram-bot python-dotenv deep-translator groq pyda
 ### 1. Clone the repository
 
 ```bash
-git clone https://gitlab.com/BananaOSINT-group/OSINT-project.git
-cd OSINT-project
+git clone https://github.com/bananaosint/bsky-poster.git
+cd bsky-poster
 ```
 
 ### 2. Install dependencies
